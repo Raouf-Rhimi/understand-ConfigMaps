@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox-with-cm
+spec:
+  selector:
+    matchLabels:
+      app: busybox-with-cm
+  template:
+    metadata:
+      labels:
+        app: busybox-with-cm
+    spec:
+
+      volumes:
+        #first volume for the first config-map (app-properties-cm)
+        - name: app-properties-volume
+          configMap:
+            name: app-properties-cm
+        #second volume for the second config-map(nginx-conf-cm)
+        - name: nginx-conf-volume
+          configMap:
+            name: nginx-conf-cm
+        #this volume is used to mount two or more config-maps
+        - name: volume-for-both-cms
+          projected:
+            sources:
+              #first config map
+              - configMap:
+                  name: app-properties-cm
+              #second config map
+              - configMap:
+                  name: nginx-conf-cm
+      containers:
+      #first container
+      - name: busybox-with-cm1
+        image: busybox
+        volumeMounts:
+          #this is for mounting the first volume content(first volume contains data from first config map) in the specified path
+          - mountPath: /etc/external-volumes/from-cm1
+            name: app-properties-volume
+          #this is for mounting the second volume content(second volume contains data from second config map) in the specified path
+          - mountPath: /etc/external-volumes/from-cm2
+            name: nginx-conf-volume
+          #this is for mounting the third volume content(third volume containes data from both first and second config map) in the specified path
+          - mountPath: /etc/external-volumes/all-config
+            name: volume-for-both-cms
+        resources: 
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        command:
+          - "/bin/sh"
+          - "-c"
+        args: 
+          - "sleep 3600"
+
+      #second container
+      - name: busybox-with-cm2
+        image: busybox
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        command:
+          - "/bin/sh"
+          - "-c"
+        args: 
+          - "env && sleep 3600"
+        #environment variables for the second container(we got values from config map using environment variables)
+        env:
+          #first environment variable
+          - name: APP_VERSION
+            valueFrom:
+              configMapKeyRef:
+                name: app-properties-cm
+                key: app-version
+          #second environment variable
+          - name: APP_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: app-properties-cm
+                key: app-name
+          #third environment variable
+          - name: TEAM
+            valueFrom:
+              configMapKeyRef:
+                name: app-properties-cm
+                key: team
+          #forth environment variable
+          - name: NGINX_CONF
+            valueFrom:
+              configMapKeyRef:
+                name: nginx-conf-cm
+                key: nginx.conf

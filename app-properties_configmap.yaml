@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  #name of the config map
+  name: app-properties-cm
+data:
+  #here we specify the key=value 
+  app-name: order
+  app-version: 1.0.0
+  team: engeneering
